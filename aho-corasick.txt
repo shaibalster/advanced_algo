@@ -1,0 +1,160 @@
+#include<stdio.h>
+
+char *text = "zxcatrgcadogrqas";
+char* pat[3] = {"cat", "dog", "bat"};
+
+#define QUEUE_SIZE 100
+
+struct trie_node {
+    int leaf;
+    struct trie_node* child[26];
+    char word[500];
+    struct trie_node *suffix_link;
+    struct trie_node *endword;
+    struct trie_node *parent;
+    char parent_char;
+};
+
+struct trie_node *root;
+
+struct trie_node *queue[QUEUE_SIZE];
+int enqueue_idx;
+int dequeue_idx;
+
+void enqueue(struct trie_node *node)
+{
+    queue[enqueue_idx++] = node;
+}
+
+struct trie_node *dequeue()
+{
+    if (dequeue_idx < enqueue_idx)
+        return queue[dequeue_idx++];
+    return NULL;
+}
+
+void build_trie(char *str)
+{
+    struct trie_node *temp = root;
+    int s_len = strlen(str);
+    for (int i = 0; i < s_len; i++) {
+        char ch = str[i];
+        if (temp->child[ch - 'a'] == NULL) {
+            temp->child[ch - 'a'] = (struct trie_node *)malloc(sizeof(struct trie_node));
+            for (int i = 0; i < 26; i++) {
+                temp->child[ch - 'a']->child[i] = NULL;
+            }
+            temp->child[ch - 'a']->parent_char = ch;
+            temp->child[ch - 'a']->parent = temp;
+            temp->child[ch - 'a']->leaf = 0;
+            temp->child[ch - 'a']->suffix_link = NULL;
+            temp->child[ch - 'a']->endword = NULL;
+        }
+        temp = temp->child[ch - 'a'];
+    }
+
+    temp->leaf = 1;
+    strcpy(temp->word, str);
+}
+
+void create_suffix_links()
+{
+    enqueue(root);
+    struct trie_node *temp = dequeue();
+    
+    while(temp != NULL) {
+        for (int i = 0; i < 26; i++) {
+            if (temp->child[i] != NULL)
+                enqueue(temp->child[i]);
+        }
+        if (temp == root) {
+            //nothing to be done
+        } else {
+            if (temp->parent == root) {
+                temp->suffix_link = root;
+                if (temp->leaf == 1)
+                    temp->endword = temp;
+                else {
+                    temp->endword = temp->suffix_link->endword;
+                }
+            } else {
+                struct trie_node *parent_suff_link = temp->parent->suffix_link;
+                char ch = temp->parent_char;
+                while(true) {
+                    if (parent_suff_link->child[ch - 'a'] != NULL) {
+                        temp->suffix_link = parent_suff_link->child[ch - 'a'];
+                        if (temp->leaf == 1)
+                            temp->endword = temp;
+                        else {
+                            temp->endword = temp->suffix_link->endword;
+                        }
+                        break;
+                    } else {
+                        parent_suff_link = parent_suff_link->suffix_link;
+                        if (parent_suff_link == root) {
+                            temp->suffix_link = root;
+                            if (temp->leaf == 1)
+                                temp->endword = temp;
+                            else {
+                                temp->endword = temp->suffix_link->endword;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        temp = dequeue();
+    }
+}
+
+void search(char *text)
+{
+    int t_len = strlen(text);
+    struct trie_node *temp = root;
+    
+    for (int i = 0; i < t_len; i++) {
+        char ch = text[i];
+        
+        // while loop to traverse node
+        while(true) {
+            if (temp->child[ch - 'a'] != NULL) {
+                temp = temp->child[ch - 'a'];
+                break;
+            }
+            if (temp == root)
+                break;
+            temp = temp->suffix_link;
+        }
+        struct trie_node *temp1 = temp;
+
+        // while loop to find all words ending with this character
+        while(true) {
+            temp1 = temp1->endword;
+            if (temp1 == root)
+                break;
+            printf("found word = %s\n", temp1->word);
+            temp1 = temp1->suffix_link;
+        }
+    }
+}
+
+int main(void) {
+    root = (struct trie_node *)malloc(sizeof(struct trie_node));
+    for (int i = 0; i < 26; i++) {
+        root->child[i] = NULL;
+    }
+    root->leaf = 0;
+    root->suffix_link = root;
+    root->endword = root;
+    
+    for (int i = 0; i < 3; i++) {
+        //printf("inserting %s\n", pat[i]);
+        build_trie(pat[i]);
+    }
+    
+    create_suffix_links();
+    
+    search(text);
+    return 0;
+}
