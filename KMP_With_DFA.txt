@@ -1,0 +1,44 @@
+void build_automaton(char *str)
+{
+    int s_len = strlen(str);
+    int x = 0;
+    
+    for (int i = 0; i < RSIZE; i++) {
+        dfa[i][0] = 0;
+    }
+    dfa[str[0] - '\0'][0] = 1;
+    
+    for (int i = 1; i < s_len; i++) {
+        char ch = str[i];
+        for(int j = 0; j < RSIZE; j++) {
+            dfa[j][i] = dfa[j][x];
+        }
+        dfa[str[i] - '\0'][i] = i + 1;
+        x = dfa[str[i] - '\0'][x];
+    }
+}
+
+int search(char *str, int size)
+{
+    int s_len = strlen(str);
+    int j = 0;
+    int i = 0;
+    for (i = 0; i < s_len && j < size; i++) {
+        j = dfa[str[i] - '\0'][j];
+    }
+    if (j == size)
+        return i - size;
+    else
+        return -1;
+}
+
+int strStr(char * haystack, char * needle){
+    // Build the DFA
+    build_automaton(needle);
+
+    // Search the string in DFA
+    int pos = search(haystack, strlen(needle));
+    
+    return pos;
+
+}
