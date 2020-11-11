@@ -1,0 +1,261 @@
+#include <math,h>
+
+struct point {
+    int x;
+    int y;
+    double slope;
+    int dist;
+};
+
+struct vector {
+    int x;
+    int y;
+};
+
+double slope(struct point *p1, struct point *p2)
+{
+    int x_slope = p2->x - p1->x;
+    int y_slope = p2->y - p1->y;
+
+    return atan2(y_slope, x_slope);
+}
+
+int cross_prod(struct vector *A, struct vector *B)
+{
+    //1 - Positive - B is creating a anti-clockwise angle
+    //2 - Negative - B is creating a clockwise angle
+    int prod = (A->x * B->y) - (B->x * A->y);
+//    printf("prod = %d\n", prod);
+//    printf("Ax = %d Ay = %d Bx = %d Bx = %d By = %d\n", A->x, A->y, B->x, B->y);
+    return prod;
+}
+
+int partition_point(struct point **arr, int low, int high)
+{
+   int i = low - 1;
+   int pivot = high;
+   
+   for (int j = low; j < high; j++) {
+       if (arr[j]->slope < arr[pivot]->slope) {
+           i++;
+           struct point *temp;
+           temp = arr[i];
+           arr[i] = arr[j];
+           arr[j] = temp;
+       } else if (arr[j]->slope == arr[pivot]->slope) {
+           if (arr[j]->dist < arr[pivot]->dist) {
+               i++;
+               struct point *temp;
+               temp = arr[i];
+               arr[i] = arr[j];
+               arr[j] = temp;
+           }
+       }
+   }
+    struct point *temp;
+
+    temp = arr[i + 1];
+    arr[i + 1] = arr[pivot];
+    arr[pivot] = temp;
+   
+   return i + 1;
+}
+
+void qsort_point(struct point **nums, int low, int high)
+{
+    if (low < high) {
+        int pt = partition_point(nums, low, high);
+        
+        qsort_point(nums, low, pt - 1);
+        qsort_point(nums, pt + 1, high);
+    }
+}
+void sort_point(struct point **nums, int numsSize)
+{
+    qsort_point(nums, 0, numsSize - 1);
+}
+
+void populate_slope(struct point **points, int points_size, struct point *start_point)
+{
+    for (int i = 0; i < points_size; i++) {
+        if (points[i]->x == start_point->x && points[i]->y == start_point->y) {
+            points[i]->slope = -1;
+            continue;
+        }
+        double sl = slope(start_point, points[i]);
+        points[i]->slope = sl;
+        points[i]->dist = sqrt(pow((points[i]->x - start_point->x), 2) + pow((points[i]->y - start_point->y), 2));
+    }
+}
+
+#define STACK_SIZE 100
+
+struct point stack[STACK_SIZE];
+int stack_idx;
+
+void push(struct point *p)
+{
+    if (stack_idx < STACK_SIZE) {
+        stack[stack_idx].x = p->x;
+        stack[stack_idx].y = p->y;
+        stack_idx++;
+    }
+}
+
+struct point* pop()
+{
+    if (stack_idx > 0) {
+        return &stack[--stack_idx];
+    }
+    return NULL;
+}
+
+int get_start(struct point **points, int point_size, struct point *p)
+{
+    int min = 0;
+    struct point ymin;
+    ymin.y = INT_MAX;
+
+    for (int i = 0; i < point_size; i++) {
+        if (points[i]->y < ymin.y) {
+            min = i;
+            ymin.y = points[i]->y;
+            ymin.x = points[i]->x;
+        }
+        if (points[i]->y == ymin.y) {
+            if (points[i]->x < ymin.x) {
+                ymin.y = points[i]->y;
+                ymin.x = points[i]->x;
+                min = i;
+            }
+        }
+    }
+    
+    p->x = ymin.x;
+    p->y = ymin.y;
+    
+    return min;
+}
+
+/**
+ * Return an array of arrays of size *returnSize.
+ * The sizes of the arrays are returned as *returnColumnSizes array.
+ * Note: Both returned array and *columnSizes array must be malloced, assume caller calls free().
+ */
+int** outerTrees(int** points, int pointsSize, int* pointsColSize, int* returnSize, int** returnColumnSizes){
+    struct point **pt;
+    struct point start_point;
+    int **result;
+    
+    stack_idx = 0;
+    
+    // Read all the points in structure
+    pt = (struct point **)malloc(sizeof(struct point) * pointsSize);
+    for (int i = 0; i < pointsSize; i++) {
+        pt[i] = (struct point *)malloc(sizeof(struct point));
+        pt[i]->x = points[i][0];
+        pt[i]->y = points[i][1];
+    }
+    
+    //1 - Find the start point by taking the smallest Y value with smallest X value if there are duplicates
+    int min = get_start(pt, pointsSize, &start_point);
+    
+    struct point temp;
+    memcpy(&temp, pt[0], sizeof(struct point));
+    memcpy(pt[0], pt[min], sizeof(struct point));
+    memcpy(pt[min], &temp, sizeof(struct point));
+    
+    //2 - Sort all the points based on the angle from the start point
+    populate_slope(pt, pointsSize, &start_point);
+    sort_point(pt, pointsSize);
+    
+    // Reverse colinear points in the return path
+    
+    int a = pointsSize - 1;
+    
+    
+    while (a >= 0) {
+        struct vector A;
+        struct vector B;
+
+        A.x = pt[pointsSize - 1]->x - start_point.x;
+        A.y = pt[pointsSize - 1]->y - start_point.y;
+        
+        B.x = pt[a]->x - pt[pointsSize - 1]->x;
+        B.y = pt[a]->y - pt[pointsSize - 1]->y;
+        if (cross_prod(&A, &B) == 0)
+            a--;
+        else
+            break;
+    }
+    int h = pointsSize - 1;
+    for (int i = a + 1; i < h; i++, h--) {
+        struct point *temp;
+        temp = pt[i];
+        pt[i] = pt[h];
+        pt[h] = temp;
+    }
+
+    if (pointsSize < 2) {
+        *returnColumnSizes = (int *)malloc(sizeof(int) * 1);
+        result = (int **)malloc(sizeof(int *) * 1);
+        result[0] = (int *)malloc(sizeof(int) * 2);
+    
+        result[0][0] = points[0][0];
+        result[0][1] = points[0][1];
+        *returnSize = 1;
+        (*returnColumnSizes)[0] = 2;
+        return result;
+    }   
+    
+    //3 - Start the main loop for finding the convex hull
+     push(pt[0]);
+     push(pt[1]);
+
+    for (int i = 2; i < pointsSize;) {
+        struct vector A;
+        struct vector B;
+
+        struct point *p2 = pop();
+        struct point *p1 = pop();
+
+        if (p1 == NULL || p2 == NULL) {
+            //stack empty
+            break;
+        }
+
+        A.x = p2->x - p1->x;
+        A.y = p2->y - p1->y;
+        
+        B.x = pt[i]->x - p2->x;
+        B.y = pt[i]->y - p2->y;
+        
+        if (cross_prod(&A, &B) >= 0) {
+            push(p1);
+            push(p2);
+            push(pt[i]);
+            i++;
+        } else {
+            push(p1);
+        }
+    }
+    
+    *returnColumnSizes = (int *)malloc(sizeof(int) * stack_idx);
+    result = (int **)malloc(sizeof(int *) * stack_idx);
+    
+    for (int i = 0; i < stack_idx; i++) {
+        result[i] = (int *)malloc(sizeof(int) * 2);
+        (*returnColumnSizes)[i] = 2;
+    }
+    struct point *p = pop();
+    int s = 0;
+    while(p != NULL) {
+        result[s][0] = p->x;
+        result[s][1] = p->y;
+        s++;
+        p = pop();
+    }
+    *returnSize = s;
+
+    return result;
+}
