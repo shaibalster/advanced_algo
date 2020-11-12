@@ -1,0 +1,337 @@
+struct point_arr {
+    int start;
+    int end;
+    int height;
+};
+
+struct map_node {
+    int key;
+    int val;
+    int height;
+    struct map_node *left;
+    struct map_node *right;
+};
+
+struct map_node *map_root;
+
+struct seg_tree {
+    int start;
+    int end;
+    struct point_arr arr[100];
+    int size;
+    int height;
+};
+
+struct node {
+    int start;
+    int end;
+    struct point_arr pt[1000];
+    int pt_size;
+    int max_height;
+    struct node *left;
+    struct node *right;
+};
+
+int get_height(struct map_node *root)
+{
+    if (root == NULL)
+        return 0;
+    
+    return root->height;
+}
+
+struct map_node *rotate_left(struct map_node *root)
+{
+    struct map_node *rc = root->right;
+    struct map_node *rclc = rc->left;
+    
+    rc->left = root;
+    root->right = rclc;
+    
+    root->height = max(get_height(root->left), get_height(root->right)) + 1;
+    rc->height = max(get_height(rc->left), get_height(rc->right)) + 1;
+    
+    return rc;
+}
+
+struct map_node *rotate_right(struct map_node *root)
+{
+    struct map_node *lc = root->left;
+    struct map_node *lcrc = root->left->right;
+    
+    lc->right = root;
+    root->left = lcrc;
+    
+    root->height = max(get_height(root->left), get_height(root->right)) + 1;
+    lc->height = max(get_height(lc->left), get_height(lc->right)) + 1;
+    
+    return lc;
+}
+
+struct map_node *left_left(struct map_node *root)
+{
+     return rotate_right(root);
+}
+
+struct map_node *right_left(struct map_node *root)
+{
+    root->right = rotate_right(root->right);
+    return rotate_left(root);
+}
+
+struct map_node *left_right(struct map_node *root)
+{
+    root->left = rotate_left(root->left);
+    return rotate_right(root);
+}
+
+struct map_node *right_right(struct map_node *root)
+{
+    return rotate_left(root);
+}
+
+struct map_node *insert_map_node(struct map_node *root, int key, int val)
+{
+    if (key < root->key) {
+        if (root->left == NULL) {
+            root->left = (struct map_node *)malloc(sizeof(struct map_node));
+            root->left->key = key;
+            root->left->val = val;
+            root->left->height = 1;
+            root->left->left = NULL;
+            root->left->right = NULL;
+        } else {
+            root->left = insert_map_node(root->left, key, val);
+        }
+    } else if (key > root->key) {
+        if (root->right == NULL) {
+            root->right = (struct map_node *)malloc(sizeof(struct map_node));
+            root->right->key = key;
+            root->right->val = val;
+            root->right->height = 1;
+            root->right->left = NULL;
+            root->right->right = NULL;
+        } else {
+            root->right = insert_map_node(root->right, key, val);
+        }
+    }
+    
+    root->height = max(get_height(root->left), get_height(root->right)) + 1;
+    
+    int balance = get_height(root->left) - get_height(root->right);
+    
+    /* Right - Right */
+    if (balance < -1 && key > root->right->key) {
+        return right_right(root);
+    }
+    /* left-left*/
+    else if (balance > 1 && key < root->left->key) {
+        return left_left(root);
+    }
+    /*right-left*/
+    else if (balance < -1 && key < root->right->key) {
+        return right_left(root);
+    }
+    /*left-right*/
+    else if (balance > 1 && key > root->left->key) {
+        return left_right(root);
+    }
+    return root;
+}
+
+int find_key(struct map_node *root, int key)
+{
+    if (root == NULL)
+        return 0;
+    
+    if (key == root->key)
+        return root->val;
+    
+    if (key < root->key)
+        return find_key(root->left, key);
+    else
+        return find_key(root->right, key);
+}
+
+int get_key_val(int key)
+{
+    return find_key(map_root, key);
+}
+
+void hash_insert(int key, int val)
+{
+    if (map_root == NULL) {
+        map_root = (struct map_node *)malloc(sizeof(struct map_node));
+        map_root->key = key;
+        map_root->val = val;
+        map_root->height = 1;
+        map_root->left = NULL;
+        map_root->right = NULL;
+    } else {
+        map_root = insert_map_node(map_root, key, val);
+    }
+}
+
+int min(int a, int b)
+{
+    return (a < b) ? a : b;
+}
+
+int max(int a, int b)
+{
+    return (a > b) ? a : b;
+}
+
+int *result;
+int idx;
+int *comp_positions;
+int *comp_new_pos;
+int *lazy;
+
+void update(struct seg_tree *st, int si, int start, int end, int us, int ue, int val)
+{
+    
+    if (start > ue || end < us) {
+        // range out of bound
+        return;        
+    }
+    //printf("update - start = %d end = %d lazy = %d\n", start, end, lazy[si]);
+    //1 - check if tree node is in modified state
+    if (lazy[si] != 0) {
+        st[si].height = lazy[si];
+        if (start != end) {
+            lazy[si * 2 + 1] = lazy[si];
+            lazy[si * 2 + 2] = lazy[si];
+        }
+        lazy[si] = 0;
+    }
+    
+    if (start >= us && ue >= end) {
+        st[si].height = val;
+        if (start != end) {
+            lazy[2 * si + 1] = val;
+            lazy[2 * si + 2] = val;
+        }
+        return;
+    }
+    
+    int mid = (start + end) / 2; 
+    update(st, si * 2 + 1, start, mid, us, ue, val);
+    update(st, si * 2 + 2, mid + 1, end, us, ue, val);
+    
+    st[si].height = max(st[si * 2 + 1].height, st[si * 2 + 2].height);
+}
+
+int query(struct seg_tree *st, int si, int start, int end, int qs, int qe)
+{
+    if (start > qe || end < qs) {
+        //outside of region
+        return 0;
+    }
+
+    if (lazy[si] != 0) {
+        st[si].height = lazy[si];
+        if (start != end) {
+            lazy[si * 2 + 1] = lazy[si];
+            lazy[si * 2 + 2] = lazy[si];
+        }
+        lazy[si] = 0;
+    }
+    
+    if (start >= qs && end <= qe) {
+        // completely within
+        return st[si].height;
+    }
+   
+    int mid = (start + end) / 2;
+    
+    int left = query(st, si * 2 + 1, start, mid, qs, qe);
+    int right = query(st, si * 2 + 2, mid + 1, end, qs, qe);
+    
+    return max(left, right);
+}
+
+void create_seg_tree(struct seg_tree *st, int si, int start, int end)
+{
+    if (start == end) {
+        st[si].start = start;
+        st[si].end = start;
+        st[si].height = 0;
+        return;
+    }
+    
+    int mid = (start + end) / 2;
+    
+    create_seg_tree(st, si * 2 + 1, start, mid);
+    create_seg_tree(st, si * 2 + 2, mid + 1, end);
+    
+    st[si].start = start;
+    st[si].end = end;
+    st[si].height = 0;
+}
+
+struct point_arr arr[1000];
+int pt_size;
+
+void compress_coord(int **positions, int positionsSize)
+{
+    int s = 1;
+    
+    // sort the coordinates first
+    for (int i = 0; i < positionsSize; i++) {
+        insert(positions[i][0]);
+        insert(positions[i][1] + positions[i][0] - 1);
+    }
+    for (int i = 0; i < positionsSize * 2; i++) {
+        comp_positions[i] = extract();
+    }
+    
+    for (int i = 0; i < 2 * positionsSize; i++) {
+        int val = get_key_val(comp_positions[i]);
+        if (val == 0) {
+            hash_insert(comp_positions[i], s);
+            s++;
+        }
+    }
+}
+
+
+int get_val(int val)
+{   
+    return get_key_val(val);
+}
+
+/**
+ * Note: The returned array must be malloced, assume caller calls free().
+ */
+int* fallingSquares(int** positions, int positionsSize, int* positionsColSize, int* returnSize){
+    int **new_pos;
+    int start = 0, end = 0;
+    heap_size = 0;
+    map_root = NULL;
+    int x = (int)ceil(log2(2 * positionsSize));
+    int size = 2 * (int)pow(2, x) - 1;
+    
+    result = (int *)malloc(sizeof(int) * positionsSize);
+    comp_positions = (int *)malloc(sizeof(int ) * positionsSize * 2);
+
+    compress_coord(positions, positionsSize);
+    
+    idx = 0;
+    struct seg_tree *st = (struct seg_tree *)malloc(sizeof(struct seg_tree) * size);
+    lazy = (int *)calloc(size, sizeof(int));
+    create_seg_tree(st, 0, 0, 2 * positionsSize - 1);
+
+    for(int i = 0; i < positionsSize; i++) {
+        start = get_val(positions[i][0]);
+        end = get_val(positions[i][1] + positions[i][0] - 1);
+        int curr = query(st, 0, 0, 2 * positionsSize - 1, start, end);
+        update(st, 0, 0, 2 * positionsSize - 1, start, end, positions[i][1] + curr);
+        result[idx++] = st[0].height;
+    }
+
+    
+    *returnSize = idx;
+    
+    return result;
+}
