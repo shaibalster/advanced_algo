@@ -1,0 +1,65 @@
+int cache[1000][1000];
+
+int check_str(char *text1, char *text2, int t1, int t2, int t1_len, int t2_len)
+{
+    int count = 0;
+    int lt = t1;
+    int rt = t2;
+    
+    if (cache[t1][t2] != -1)
+        return cache[t1][t2];
+    
+    while(t1 < t1_len && t2 < t2_len) {
+        if (text1[t1] == text2[t2]) {
+            t1++;
+            t2++;
+            count++;
+        } else {
+            int l = check_str(text1, text2, t1 + 1, t2, t1_len, t2_len);
+            int r = check_str(text1, text2, t1, t2 + 1, t1_len, t2_len);
+            
+            if (l > r) {
+                cache[lt][rt] = l + count;
+                return l + count;
+            } else {
+                cache[lt][rt] = r + count;
+                return r + count;
+            }
+        }
+    }
+    
+    cache[lt][rt] = count;
+    return count;
+}
+
+int longestCommonSubsequence(char * text1, char * text2){
+    int t1 = 0;
+    int t2 = 0;
+    int t1_len = strlen(text1);
+    int t2_len = strlen(text2);
+    int count = 0;
+    
+    memset(cache, -1, sizeof(int) * 500 * 500);
+    if (t2_len < t1_len) {
+        char *temp = text1;
+        text1 = text2;
+        text2 = temp;
+        int len = t1_len;
+        t1_len = t2_len;
+        t2_len = len;
+    }
+    
+    count = check_str(text1, text2, t1, t2, t1_len, t2_len);
+    
+    return count;
+}
+
+int minDistance(char * word1, char * word2){
+    int first = longestCommonSubsequence(word1, word2);
+
+    int del = 0;
+    del += strlen(word1) - first;
+    del += strlen(word2) - first;
+    
+    return del;
+}
