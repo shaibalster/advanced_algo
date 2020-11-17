@@ -1,0 +1,219 @@
+#include<stdio.h>
+
+char *text = "aaaaaa";
+struct tuple {
+    int index;
+    int left;
+    int right;
+};
+
+int power[10] = {1, 2, 4, 8, 16, 32, 64, 128};
+int rank[10][1000];
+int step = 0;
+#define HEAP_SIZE 100000
+struct tuple heap[HEAP_SIZE];
+int heap_size = 0;
+
+int left(int pos)
+{
+    return (2 * pos) + 1;
+}
+
+int right(int pos)
+{
+    return (2 * pos) + 2;
+}
+
+int parent(int pos)
+{
+    return (pos - 1) / 2;
+}
+
+void fix_heap(int pos)
+{
+    while(pos) {
+        if (heap[pos].left < heap[parent(pos)].left) {
+            struct tuple temp = heap[parent(pos)];
+            heap[parent(pos)] = heap[pos];
+            heap[pos] = temp;
+            pos = parent(pos);
+        } else if (heap[pos].left == heap[parent(pos)].left) {
+            if (heap[pos].right < heap[parent(pos)].right) {
+                struct tuple temp = heap[parent(pos)];
+                heap[parent(pos)] = heap[pos];
+                heap[pos] = temp;
+                pos = parent(pos);
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+}
+void insert(int index, int left, int right)
+{
+    if (heap_size == 0) {
+        heap[heap_size].index = index;
+        heap[heap_size].left = left;
+        heap[heap_size].right = right;
+        heap_size++;
+        return;
+    }
+    if (heap_size < HEAP_SIZE) {
+        heap[heap_size].index = index;
+        heap[heap_size].left = left;
+        heap[heap_size].right = right;
+        heap_size++;
+    } else {
+        return;
+    }
+    fix_heap(heap_size - 1);
+}
+
+void heapify(int pos)
+{
+    int max = pos;
+    
+    if (left(pos) < heap_size && heap[left(pos)].left <= heap[pos].left) {
+        if (heap[left(pos)].left == heap[pos].left) {
+            if (heap[left(pos)].right < heap[pos].right) {
+                max = left(pos);
+            }
+        } else {
+            max = left(pos);
+        }
+    }
+    
+    if (right(pos) < heap_size && heap[right(pos)].left <= heap[max].left) {
+        if (heap[right(pos)].left == heap[max].left) {
+            if (heap[right(pos)].right < heap[max].right) {
+                max = right(pos);
+            }
+        } else {
+            max = right(pos);
+        }
+    }
+    
+    if (max != pos && max < heap_size) {
+        struct tuple temp = heap[pos];
+        heap[pos] = heap[max];
+        heap[max] = temp;
+        heapify(max);
+    }
+}
+
+struct tuple extract()
+{
+    struct tuple root = {-1, -1, -1};
+    if (heap_size == 0)
+        return root;
+    if (heap_size == 1) {
+        heap_size--;
+        return heap[0];
+    }
+    root = heap[0];
+    heap[0] = heap[heap_size - 1];
+    
+    heap_size--;
+    heapify(0);
+    
+    return root;
+}
+
+void sort(struct tuple *arr, int size)
+{
+    for(int i = 0; i < size; i++) {
+        insert(arr[i].index, arr[i].left, arr[i].right);
+    }
+    
+    for (int i = 0; i < size; i++) {
+        struct tuple temp = extract();
+        arr[i].index = temp.index;
+        arr[i].left = temp.left;
+        arr[i].right = temp.right;
+    }
+}
+
+int * build_array(char *text, int *lca)
+{
+    int s_len = strlen(text);
+    struct tuple *tuples = (struct tuple *)calloc(s_len, sizeof(struct tuple));
+    int *sa = (int *)calloc(s_len, sizeof(int));
+
+    // Assign rank to charaters in first iteration where we consider 1 character at a time
+    for (int i = 0; i < s_len; i++) {
+        char ch = text[i];
+        rank[0][i] = ch - 'a';
+    }
+
+    int i;
+    for (i = 1; power[i - 1] < s_len; i++, step++) {
+        for (int j = 0; j < s_len; j++) {
+            tuples[j].left = rank[i - 1][j];
+            tuples[j].right = (j + power[i - 1] < s_len) ? rank[i - 1][j + power[i - 1]] : -1;
+            tuples[j].index = j;
+        }
+        sort(tuples, s_len);
+        for (int j = 0; j < s_len; j++) {
+            if (j > 0 && (tuples[j].left == tuples[j - 1].left && tuples[j].right == tuples[j - 1].right))
+                rank[i][tuples[j].index] = rank[i][tuples[j - 1].index];
+            else
+                rank[i][tuples[j].index] = j;
+        }
+    }
+    
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < s_len; j++) {
+            printf("%d ", rank[i][j]);
+        }
+        printf("\n");
+    }
+    for (int k = 0; k < s_len; k++) {
+        sa[rank[step][k]] = k;
+    }
+    
+    return sa;
+}
+
+int main(void) {
+    int s_len = strlen(text);
+    int *lca = (int *)malloc(sizeof(int) * strlen(text));
+    int *s_arr = build_array(text, lca);
+    printf("Suffix array - ");
+    for(int i = 0; i < strlen(text); i++) {
+        printf("%d ", s_arr[i]);
+    }
+    printf("\n");
+    
+
+// Kasai's algorithm
+    int *rank_arr = (int *)malloc(sizeof(int) * strlen(text));
+    
+    // fill up the rank
+    for (int i = 0; i < s_len; i++) {
+        rank_arr[s_arr[i]] = i;
+    }
+    int k = 0;
+    for (int i = 0; i < s_len; i++) {
+        if (rank_arr[i] == s_len - 1) {
+            k = 0;
+            continue;
+        }
+        int j = s_arr[rank_arr[i] + 1];
+        
+        while(i + k < s_len && j + k < s_len && text[i + k] == text[j + k]) {
+            k++;
+        }
+        lca[rank_arr[i]] = k;
+        if (k > 0)
+            k--;
+    }
+    lca[s_len - 1] = 0;
+
+    printf("LCA - ");
+    for (int i = 0; i < s_len; i++) {
+        printf("%d ", lca[i]);
+    }
+    return 0;
+}
