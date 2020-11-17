@@ -176,6 +176,20 @@ int * build_array(char *text, int *lca)
     return sa;
 }
 
+int lcp(int x, int y, int N)
+{
+    int k, ret = 0;
+    if (x == y) return N - x;
+    for (k = step; k >= 0 && x < N && y < N; k--) {
+        if (rank[k][x] == rank[k][y]) {
+            x += power[k];
+            y += power[k];
+            ret += power[k];
+        }
+    }
+    return ret;
+}
+
 int main(void) {
     int s_len = strlen(text);
     int *lca = (int *)malloc(sizeof(int) * strlen(text));
@@ -188,6 +202,7 @@ int main(void) {
     
 
 // Kasai's algorithm
+#if 0 // Kasai's algorithm
     int *rank_arr = (int *)malloc(sizeof(int) * strlen(text));
     
     // fill up the rank
@@ -210,7 +225,14 @@ int main(void) {
             k--;
     }
     lca[s_len - 1] = 0;
-
+#else
+    for (int i = 0; i < s_len - 1; i++) {
+        int val = lcp(s_arr[i], s_arr[i + 1], s_len);
+        printf("val = %d\n", val);
+        lca[i] = val;
+    }
+    lca[s_len - 1] = 0;
+#endif
     printf("LCA - ");
     for (int i = 0; i < s_len; i++) {
         printf("%d ", lca[i]);
