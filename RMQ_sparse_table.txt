@@ -1,0 +1,50 @@
+#include<stdio.h>
+#define MAX 100000
+#define K log2(MAX)
+#define ROW 1000
+#define LEN 10
+
+int arr[LEN] = {1,3,2,5,6,4,7,5,3,9};
+int lg[MAX];
+int table[1000][1000];
+void calc_log()
+{
+    lg[1] = 0;
+    for (int i = 2; i < MAX; i++) {
+        lg[i] = lg[i/2] + 1;
+    }
+}
+
+void build_table(int *arr, int len)
+{
+    for (int i = 0; i < len; i++) {
+        table[i][0] = arr[i];
+    }
+    
+    for (int j = 1; j <= K; j++)
+        for (int i = 0; i + (1 << j) <= len; i++)
+            table[i][j] = min(table[i][j-1], table[i + (1 << (j - 1))][j - 1]);
+}
+
+int min(int a, int b)
+{
+    return (a < b) ? a : b;
+}
+
+int rmq(int left, int right)
+{
+    int j = lg[right - left + 1];
+    int mn = min(table[left][j], table[right - (1 << j) + 1][j]);
+    
+    return mn;
+}
+
+int main(void) {
+    calc_log();
+    build_table(arr, LEN);
+    int l = 3;
+    int r = 8;
+    int min = rmq(l, r);
+    printf("range %d - %d min = %d", l, r, min);
+    return 0;
+}
