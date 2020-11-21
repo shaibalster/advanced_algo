@@ -1,0 +1,115 @@
+#define STACK_SIZE 2000
+int stack_idx;
+
+int stack[STACK_SIZE];
+
+void push(int val)
+{
+    stack[stack_idx++] = val;
+}
+
+int pop()
+{
+    if (stack_idx > 0)
+        return stack[--stack_idx];
+    return -1;
+}
+
+struct adj_list {
+    int nodes[2000];
+    int count;
+};
+
+struct graph {
+    int V;
+    struct adj_list list[2000];
+};
+
+struct graph G;
+
+void dfs(int parent, int *visited)
+{
+    visited[parent] = 1;
+    
+    for (int i = 0; i < G.list[parent].count; i++) {
+        if (visited[G.list[parent].nodes[i]] == 0) {
+            dfs(G.list[parent].nodes[i], visited);
+        }
+    }
+}
+
+void dfs_arr(int *src, int size, int *visited)
+{
+    for (int i = 0; i < size; i++) {
+        dfs(src[i], visited);
+    }
+}
+
+void add_edge(int src, int dest)
+{
+    G.list[src].nodes[G.list[src].count] = dest;
+    G.list[src].count++;
+}
+
+void buildNFA(char *p)
+{
+    int s_len = strlen(p) + 1;
+    
+    for (int i = 0; i < s_len; i++) {        
+        if (p[i] == '(' || p[i] == '*' || p[i] == ')') {
+            add_edge(i, i + 1);
+        }
+    }
+}
+
+bool search(char *s, char *p)
+{
+    int p_len = strlen(p) + 1;
+    int s_len = strlen(s);
+    
+    int *visited = (int *)calloc(p_len, sizeof(int));
+    int *src = (int *)calloc(p_len, sizeof(int));
+    
+    src[0] = 0;
+    dfs_arr(src, 1, visited);
+    
+    for (int i = 0; i < s_len; i++) {
+        stack_idx = 0;
+        for (int j = 0; j < p_len; j++) {
+            if (visited[j] == 1) {
+                if (s[i] == p[j] || p[j] == '?') {
+                    push(j + 1);
+                }
+                else if(p[j] == '*') {
+                    push(j);
+                }
+            }
+        }
+        
+        memset(visited, 0, sizeof(int) * p_len);
+        int val = pop();
+        int idx = 0;
+        while(val != -1) {
+            src[idx++] = val;
+            val = pop();
+        }
+        dfs_arr(src, idx, visited);
+    }
+    
+    if (visited[p_len - 1] == 1)
+        return true;
+    return false;
+}
+
+bool isMatch(char * s, char * p){
+    stack_idx = 0;
+    for(int i = 0; i < 2000; i++) {
+        G.list[i].count = 0;
+    }
+    int s_len = strlen(s);
+    int p_len = strlen(p);
+    
+    buildNFA(p);
+    
+    return search(s, p);
+}
