@@ -1,0 +1,128 @@
+#define STACK_SIZE 1000
+
+int stack[STACK_SIZE];
+int stack_idx;
+
+void push(int val)
+{
+    stack[stack_idx++] = val;
+}
+
+int pop()
+{
+    if (stack_idx > 0)
+        return stack[--stack_idx];
+    return -1;
+}
+
+struct adj_list {
+    int val;
+    int nodes[50];
+    int count;
+};
+
+struct graph {
+    int V;
+    struct adj_list list[50];
+};
+
+struct graph G;
+
+void add_edge(int src, int dest)
+{
+    G.list[src].nodes[G.list[src].count] = dest;
+    G.list[src].count++;
+}
+
+void dfs(int parent, int *visited)
+{
+    visited[parent] = 1;
+    for (int i = 0; i < G.list[parent].count; i++) {
+        if (visited[G.list[parent].nodes[i]] == 0)
+            dfs(G.list[parent].nodes[i], visited);
+    }
+}
+
+void dfs_arr(int *src, int size, int *visited)
+{
+    for (int i = 0; i < size; i++) {
+        if (visited[src[i]] == 0) {
+            dfs(src[i], visited);
+        }
+    }
+}
+
+bool search(char *s, char *p, int p_len)
+{
+    int s_len = strlen(s);
+    int *visited = (int *)calloc(p_len + 1, sizeof(int));
+    int *src = (int *)calloc(p_len + 1, sizeof(int));
+    
+    src[0] = 0;
+    /* Record all epsilon states visited from state 0 */
+    dfs_arr(src, 1, visited);
+    for (int i = 0; i < s_len; i++) {
+        stack_idx = 0;
+        for (int j = 0; j < p_len; j++) {
+            if (visited[j] != 0) {
+                if (s[i] == p[j] || p[j] == '.') {
+                    /* matched a real state transition */
+                    push(j + 1);
+                }
+            }
+        }
+        memset(visited, 0, sizeof(int) * p_len);
+        memset(src, 0, sizeof(int) * p_len);
+        int val = pop();
+        int idx = 0;
+        while(val != -1) {
+            src[idx++] = val;
+            val = pop();
+        }
+        dfs_arr(src, idx, visited);
+    }
+    if (visited[p_len - 1] == 1)
+        return true;
+    
+    return false;
+}
+
+/* This function will add epsilon edges in the 
+ * NFA.
+ * Epsilon edges - The edges which moves the state without scanning.
+ */
+void buildNFA(char *p)
+{
+    int s_len = strlen(p) + 1;
+    
+    for (int i = 0; i < s_len; i++) {
+        int lp = i;
+        if (p[i] == '(')
+            push(i);
+        else if (p[i] == ')') {
+            lp = pop();
+        }
+        if (i < s_len - 1 && p[i + 1] == '*') {
+            add_edge(lp, i + 1);
+            add_edge(i + 1, lp);
+        }
+        if (p[i] == '(' || p[i] == '*' || p[i] == ')')
+            add_edge(i, i+1);
+    }
+}
+
+bool isMatch(char * s, char * p){
+    stack_idx = 0;
+    int s_len = strlen(p);
+    char *new_pat = (char *)malloc(s_len + 3);
+    for (int i = 0; i < 50; i++) {
+        G.list[i].count = 0;
+    }
+    new_pat[0] = '\0';
+    new_pat = strcat(new_pat, "(");
+    new_pat = strcat(new_pat, p);
+    new_pat = strcat(new_pat, ")");
+    
+    buildNFA(new_pat);
+    return search(s, new_pat, strlen(new_pat));
+}
