@@ -1,0 +1,87 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <queue>
+
+using namespace std;
+
+struct edge {
+    int u;
+    int v;
+    int w;
+};
+
+struct CompareWeight {
+    bool operator()(edge const& p1, edge const& p2)
+    {
+        return p1.w < p2.w;
+    }
+};
+
+int graph[6][3] = {{0,2,4},{0,1,3},{1,3,2},{1,5,1},{3,4,6},{2,4,5}};
+
+struct adj_list {
+    int nodes[1000];
+    int weight[1000];
+    int size;
+};
+
+struct graph {
+    int V;
+    struct adj_list list[1000];
+};
+
+struct graph G;
+
+void add_edges(int src, priority_queue<edge, vector<edge>, CompareWeight> &queue)
+{
+    for (int i = 0; i < G.list[src].size; i++) {
+        struct edge temp;
+        temp.u = src;
+        temp.v = G.list[src].nodes[i];
+        temp.w = G.list[src].weight[i];
+        queue.push(temp);
+    }
+}
+
+int main()
+{
+    for (int i = 0; i < 1000; i++) {
+        G.list[i].size = 0;
+    }
+    vector<struct edge> mst;
+    vector<int> included;
+    for (int i = 0; i < 6; i++) {
+        G.list[graph[i][0]].nodes[G.list[graph[i][0]].size] = graph[i][1];
+        G.list[graph[i][0]].weight[G.list[graph[i][0]].size] = graph[i][2];
+        G.list[graph[i][0]].size++;
+        G.list[graph[i][1]].nodes[G.list[graph[i][1]].size] = graph[i][0];
+        G.list[graph[i][1]].weight[G.list[graph[i][1]].size] = graph[i][2];
+        G.list[graph[i][1]].size++;
+    }
+    priority_queue<edge, vector<edge>, CompareWeight> queue;
+
+    add_edges(0, queue);
+    cout<< "node 0 added" << endl;
+    included.push_back(0);
+    while(!queue.empty()) {
+        struct edge temp = queue.top();
+        queue.pop();
+        auto it = find(included.begin(), included.end(), temp.v);
+        if (it != included.end()) {
+            continue;
+        }
+        mst.push_back(temp);
+        add_edges(temp.v, queue);
+        included.push_back(temp.v);
+    }
+
+    cout << "MST - " << endl;
+    while(!mst.empty()) {
+        struct edge temp = mst.back();
+        mst.pop_back();
+        cout << "edge - " << temp.u << " " << temp.v << " " << temp.w << endl;
+    }
+
+    return 0;
+}
