@@ -1,0 +1,192 @@
+typedef struct {
+    int fin_seg[1000][1000];
+    int int_seg[1000][1000];
+    int orig_row_size;
+    int orig_col_size;
+    int orig_mat[500][500];
+} NumMatrix;
+
+int create_segment(int st[][1000], int si, int start, int end, int mat[][500], int row)
+{
+    if (start == end) {
+        st[row][si] = mat[row][end];
+        return st[row][si];
+    }
+    
+    int mid = (start + end) / 2;
+    
+    int left = create_segment(st, si * 2 + 1, start, mid, mat, row);
+    int right = create_segment(st, si * 2 + 2, mid + 1, end, mat, row);
+    
+    st[row][si] = left + right;
+    
+    return st[row][si];
+}
+
+void create_final_segment(int fin_st[][1000], int si, int start, int end, int size, int int_st[][1000])
+{
+    int height = (int)ceil(log2(size));
+    int max_sz = 2 * (int)pow(2, height) - 1;
+    
+    if (start == end) {
+        for(int i = 0; i < max_sz; i++) {
+            fin_st[si][i] = int_st[end][i];
+        }
+        return;
+    }
+    
+    int mid = (start + end) / 2;
+    
+    create_final_segment(fin_st, si * 2 + 1, start, mid, size, int_st);
+    create_final_segment(fin_st, si * 2 + 2, mid + 1, end, size, int_st);
+    
+    for(int i = 0; i < max_sz; i++) {
+        fin_st[si][i] = fin_st[si * 2 + 1][i] + fin_st[si * 2 + 2][i];
+    }
+}
+
+NumMatrix* numMatrixCreate(int** matrix, int matrixSize, int* matrixColSize) {
+    if (matrixSize == 0)
+        return NULL;
+    NumMatrix *obj = (NumMatrix *)malloc(sizeof(NumMatrix));
+    obj->orig_row_size = matrixSize;
+    obj->orig_col_size = matrixColSize[0];
+    
+    for (int i = 0; i < obj->orig_row_size; i++) {
+        for (int j = 0; j < obj->orig_col_size; j++) {
+            obj->orig_mat[i][j] = matrix[i][j];
+        }
+    }
+    for (int i = 0; i < obj->orig_row_size; i++) {
+        create_segment(obj->int_seg, 0, 0, obj->orig_col_size - 1, obj->orig_mat, i);
+    }
+    int height = (int)ceil(log2(matrixColSize[0]));
+    int max_sz = 2 * (int)pow(2, height) - 1;
+
+    create_final_segment(obj->fin_seg, 0, 0, obj->orig_row_size - 1, obj->orig_col_size, obj->int_seg);
+    
+    return obj;
+}
+
+void final_update(int fin_st[][1000], int si, int start, int end, int x, int pos, int val)
+{
+    /* Segment does not contain the target (Row) */
+    if (x < start || x > end) {
+        return;
+    }
+    /* Target lies is the segment (Row)*/
+    if (start == end) {
+        fin_st[si][pos] = val;
+        return;
+    }
+    
+    if (start != end) {
+        int mid = (start + end) / 2;
+        final_update(fin_st, si * 2 + 1, start, mid, x, pos, val);
+        final_update(fin_st, si * 2 + 2, mid + 1, end, x, pos, val);
+        fin_st[si][pos] = fin_st[si * 2 + 1][pos] + fin_st[si * 2 + 2][pos];
+    }
+}
+
+void update_intermediate_cols(int fin_st[][1000], int si, int start, int end, int x, int pos, int val)
+{
+    /* Segment does not contain the target (Row) */
+    if (x < start || x > end) {
+        return;
+    }
+    /* Target lies is the segment (Row)*/
+    if (start == end) {
+        fin_st[si][pos] = fin_st[si][pos * 2 + 1] + fin_st[si][pos * 2 + 2];
+        return;
+    }
+    
+    if (start != end) {
+        int mid = (start + end) / 2;
+        update_intermediate_cols(fin_st, si * 2 + 1, start, mid, x, pos, val);
+        update_intermediate_cols(fin_st, si * 2 + 2, mid + 1, end, x, pos, val);
+        fin_st[si][pos] = fin_st[si * 2 + 1][pos] + fin_st[si * 2 + 2][pos];
+    }
+}
+
+void update(int fin_st[][1000], int si, int start, int end, int x, int y, int val, int size)
+{
+    /* Segment does not contain the target (Col) */
+    if (start > y || end < y)
+        return;
+
+    /* Target lies is the segment (Col)*/
+    if (start == end) {
+        final_update(fin_st, 0, 0, size - 1, x, si, val);
+        return;
+    }
+
+    if (start != end) {
+        int mid = (start + end) / 2;
+        update(fin_st, si * 2 + 1, start, mid, x, y, val, size);
+        update(fin_st, si * 2 + 2, mid + 1, end, x, y, val, size);
+        update_intermediate_cols(fin_st, 0, 0, size - 1, x, si, val);
+    }
+}
+
+void numMatrixUpdate(NumMatrix* obj, int row, int col, int val) {
+    update(obj->fin_seg, 0, 0, obj->orig_col_size - 1, row, col, val, obj->orig_row_size);
+}
+
+int get_final_val(int fin_st[][1000], int si, int start, int end, int x1, int x2, int pos)
+{
+    /* case 2 - Segment is outside of query range (Row)*/
+    if (start > x2 || end < x1)
+        return 0;
+
+    /* Case 1 - Segment is completely within range (Row)*/
+    if (start >= x1 && end <= x2) {
+        return fin_st[si][pos];
+    }
+    /* case 3 - Segment is overlapping. Go down (Row)*/
+    if (start != end) {
+        int mid = (start + end) / 2;
+        int val1 = get_final_val(fin_st, si * 2 + 1, start, mid, x1, x2, pos);
+        int val2 = get_final_val(fin_st, si * 2 + 2, mid + 1, end, x1, x2, pos);
+        return val1 + val2;
+    }
+    
+    return 0;
+}
+
+int get_val(int fin_st[][1000], int si, int start, int end, int x1, int y1, int x2, int y2, int size)
+{
+    /* case 2 - Segment is outside of query range (Col)*/
+    if (start > y2 || end < y1)
+        return 0;
+
+    /* Case 1 - Segment is completely within range (Col)*/
+    if (start >= y1 && end <= y2) {
+        return get_final_val(fin_st, 0, 0, size - 1, x1, x2, si);
+    }
+    /* case 3 - Segment is overlapping. Go down (Col)*/
+    int mid = (start + end) / 2;
+    
+    int val1 = get_val(fin_st, si * 2 + 1, start, mid, x1, y1, x2, y2, size);
+    int val2 = get_val(fin_st, si * 2 + 2, mid + 1, end, x1, y1, x2, y2, size);
+    
+    return val1 + val2;
+}
+
+
+int numMatrixSumRegion(NumMatrix* obj, int row1, int col1, int row2, int col2) {
+      return get_val(obj->fin_seg, 0, 0, obj->orig_col_size - 1, row1, col1, row2, col2, obj->orig_row_size);
+}
+
+void numMatrixFree(NumMatrix* obj) {
+    
+}
+
+/**
+ * Your NumMatrix struct will be instantiated and called as such:
+ * NumMatrix* obj = numMatrixCreate(matrix, matrixSize, matrixColSize);
+ * numMatrixUpdate(obj, row, col, val);
+ 
+ * int param_2 = numMatrixSumRegion(obj, row1, col1, row2, col2);
+ 
+ * numMatrixFree(obj);
+*/
