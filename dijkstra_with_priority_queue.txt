@@ -1,0 +1,80 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <queue>
+#include <climits>
+
+using namespace std;
+
+int graph[6][3] = {{0,2,4},{0,1,3},{1,3,2},{1,5,1},{3,4,6},{2,4,5}};
+
+struct edge {
+    int u;
+    int v;
+    int w;
+};
+typedef pair<int,int> pii;
+
+struct compare {
+public:
+    bool operator()(pii const& first, pii const& second) {
+        return first.second < second.second;
+    }
+};
+
+void dijkstra(int src, vector<vector<pair<int, int>>> &adj_list,
+              vector<int> &parent, vector<int> &dist)
+{
+    priority_queue<pii, vector<pii>, compare> queue;
+
+    dist[src] = 0;
+
+    queue.push({src, 0});
+
+    while(!queue.empty()) {
+        pair<int,int>dt = queue.top();
+        queue.pop();
+
+        if (dt.second != dist[dt.first])
+            continue;
+
+        for (auto x : adj_list[dt.first]) {
+            int sec = x.first;
+            int distance = x.second;
+            if (dist[dt.first] + distance < dist[sec]) {
+                dist[sec] = dist[dt.first] + distance;
+                parent[sec] = dt.first;
+                queue.push({sec, dist[sec]});
+            }
+        }
+    }
+}
+
+int main()
+{
+    vector<int> parents;
+    vector<int> dist;
+    vector<vector<pair<int,int>>> adj_list;
+
+    adj_list.resize(6);
+
+    for (int i = 0; i < 6; i++) {
+        adj_list[graph[i][0]].push_back({graph[i][1], graph[i][2]});
+        adj_list[graph[i][1]].push_back({graph[i][0], graph[i][2]});
+    }
+
+    int src = 0;
+    int dest = 4;
+    dist.assign(6, INT_MAX);
+    parents.assign(6, 0);
+
+
+    dijkstra(src, adj_list, parents, dist);
+    cout << "dijkstra done" << endl;
+    for(int i = dest; i != src; i = parents[i]) {
+        cout << i << " ";
+    }
+    cout << src << endl;
+
+    return 0;
+}
