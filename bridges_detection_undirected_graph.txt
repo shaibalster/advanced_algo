@@ -1,0 +1,57 @@
+class Solution {
+public:
+    int timer;
+    vector<vector<int>> result;
+    void dfs(int parent, int grand_p, vector<int> &low, vector<int> &tin, vector<int> &visited, vector<vector<int>>& connections)
+    {
+        visited[parent] = 1;
+        ++timer;
+        tin[parent] = timer;
+        low[parent] = timer;
+
+        for (int to : connections[parent]) {
+            if (to == grand_p)
+                continue;
+            if (visited[to] == 1) {
+                low[parent] = min(low[parent], tin[to]);
+            } else {
+                dfs(to, parent, low, tin, visited, connections);
+                low[parent] = min(low[parent], low[to]);
+                if (low[to] > tin[parent]) {
+                    vector<int> temp;
+                    temp.push_back(parent);
+                    temp.push_back(to);
+                    result.push_back(temp);
+                }
+            }
+        }
+    }
+    
+    vector<vector<int>> criticalConnections(int n, vector<vector<int>>& connections) {
+        vector<int> low;
+        vector<int> tin;
+        vector<int> visited;
+        vector<vector<int>> adj_list;
+        adj_list.resize(n);
+        
+        for (int i = 0; i < connections.size(); i++) {
+            adj_list[connections[i][0]].push_back(connections[i][1]);
+            adj_list[connections[i][1]].push_back(connections[i][0]);
+        }
+        
+        timer = 0;
+        //low.assign(n, INT_MAX);
+        //tin.assign(n, INT_MAX);
+        low.resize(n);
+        tin.resize(n);
+        visited.resize(n);
+        
+        for (int i = 0; i < n; i++) {
+            if (visited[i] == 0) {
+                dfs(i, -1, low, tin, visited, adj_list);
+            }
+        }
+        
+        return result;
+    }
+};
