@@ -1,0 +1,124 @@
+#include <iostream>
+#include <vector>
+#include <stack>
+#include <algorithm>
+using namespace std;
+
+typedef pair<int,int> pii;
+
+void dfs1(int parent, vector<vector<int>> &adj_list, stack<int> &st, vector<int> &visited)
+{
+	visited[parent] = 1;
+	
+	for (int i = 0; i < adj_list[parent].size(); i++) {
+		if (visited[adj_list[parent][i]] == 0)
+			dfs1(adj_list[parent][i], adj_list, st, visited);
+	}
+	st.push(parent);
+}
+
+void dfs2(int parent, vector<int> &cost, vector<vector<int>> &rev_list, vector<vector<pii>> &comp, int key, vector<int> &visited)
+{
+	visited[parent] = 1;
+	comp[key].push_back({parent, cost[parent - 1]});
+
+	for (int i = 0; i < rev_list[parent].size(); i++) {
+		if (visited[rev_list[parent][i]] == 0)
+			dfs2(rev_list[parent][i], cost, rev_list, comp, key, visited);
+	}
+}
+
+
+bool f(const pii &fir, const pii &sec)
+{
+	return fir.second < sec.second;
+}
+
+int main() {
+	// your code goes here
+	int n;
+	cin >> n;
+	vector<int> cost;
+	for (int i = 0; i < n; i++) {
+		int val;
+		cin >> val;
+		cost.push_back(val);
+	}
+	int edges;
+	cin >> edges;
+	vector<vector<int>> adj_list;
+	vector<vector<int>> rev_list;
+	adj_list.resize(n + 1);
+	rev_list.resize(n + 1);
+	for (int i = 0; i < edges; i++) {
+		int u;
+		int v;
+		cin >> u >> v;
+		adj_list[u].push_back(v);
+	}
+	//transpose the graph
+	for (int i = 0; i < n + 1; i++) {
+		for (int j = 0; j < adj_list[i].size(); j++) {
+			rev_list[adj_list[i][j]].push_back(i);
+		}	
+	}
+	stack<int> st;
+	vector<vector<pii>> comp;
+	comp.resize(n + 1);
+	vector<int> visited;
+	visited.assign(n + 1, 0);
+	for(int i = 0; i <= n; i++) {
+		if (visited[i] == 0)
+			dfs1(i, adj_list, st, visited);
+	}
+	visited.assign(n + 1, 0);
+	int key = 0;
+	while (!st.empty()) {
+		int node = st.top();
+		st.pop();
+		if (visited[node] == 0) {
+			dfs2(node, cost, rev_list, comp, key, visited);
+			key++;
+		}
+	}
+	key--;
+	for (int i = 0; i < key; i++) {
+		sort(comp[i].begin(), comp[i].end(), f);
+	}
+	// for (int i = 0; i < key; i++) {
+	// 	cout << "comp = " << i << endl;
+	// 	for (int j = 0; j < comp[i].size(); j++) {
+	// 		cout << comp[i][j].first << " ";
+	// 	}
+	// 	cout << endl;
+	// }
+	
+	uint64_t min_cost = 0;
+	for (int i = 0; i < key; i++) {
+		min_cost += comp[i][0].second;
+	}
+	vector<uint64_t> count;
+	count.assign(key, 1);
+	cout << min_cost << " ";
+	for (int i = 0; i < key; i++) {
+		int temp_count = 0;
+		uint64_t temp_min = min_cost;
+		for (int j = 1; j < comp[i].size(); j++) {
+			temp_min = temp_min - comp[i][j - 1].second;
+			temp_min += comp[i][j].second;
+			if (temp_min == min_cost)
+				temp_count++;
+			else
+				break;
+		}
+		count[i] = temp_count + 1;
+		count[i] %= 1000000007;
+	}
+	uint64_t cnt = 1;
+	for (int i = 0; i < count.size(); i++) {
+		cnt *= count[i];
+		cnt %= 1000000007;
+	}
+	cout << cnt << endl;
+	return 0;
+}
