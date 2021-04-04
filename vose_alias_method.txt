@@ -1,0 +1,66 @@
+class Solution {
+public:
+    stack<int> small;
+    stack<int> large;
+    vector<double> prob;
+    vector<int> alias;
+    vector<double> table;
+    double sum;
+    int size;
+    
+    Solution(vector<int>& w) {
+        size = w.size();
+        table.resize(size);
+        sum = accumulate(w.begin(), w.end(), 0);
+        for(int i = 0; i < w.size(); i++) {
+            double val = ((double)w[i] / sum) * (double)w.size();
+            table[i] = val;
+        }
+        prob.resize(size);
+        alias.resize(size);
+        for (int i = 0; i < w.size(); i++) {
+            if (table[i] < 1) {
+                small.push(i);
+            } else {
+                large.push(i);
+            }
+        }
+        
+        while(!small.empty() && !large.empty()) {
+            int s = small.top();
+            small.pop();
+            int l = large.top();
+            large.pop();
+            
+            prob[s] = table[s];
+            alias[s] = l;
+            
+            table[l] = (table[l] + table[s]) - 1;
+            
+            if (table[l] < 1)
+                small.push(l);
+            else
+                large.push(l);
+        }
+        
+        while(!small.empty()) {
+            int idx = small.top();
+            prob[idx] = 1;
+            small.pop();
+        }
+        while(!large.empty()) {
+            int idx = large.top();
+            prob[idx] = 1;
+            large.pop();
+        }
+    }
+    
+    int pickIndex() {
+        int idx = rand() % size;
+        double coin = (double)rand() / (double)RAND_MAX;
+        
+        if (prob[idx] > coin)
+            return idx;
+        return alias[idx];
+    }
+};
