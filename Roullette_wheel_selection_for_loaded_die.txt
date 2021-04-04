@@ -1,0 +1,19 @@
+class Solution {
+public:
+    double sum;
+    vector<double> arr;
+    Solution(vector<int>& w) {
+        arr.resize(w.size());
+        sum = accumulate(w.begin(), w.end(), 0);
+        arr[0] = w[0] / sum;
+        for (int i = 1; i < w.size(); i++) {
+            arr[i] = (w[i] / sum) + arr[i - 1];
+        }
+    }
+    
+    int pickIndex() {
+        double idx = (double)rand() / RAND_MAX;        
+        auto id = upper_bound(arr.begin(), arr.end(), idx);        
+        return id - arr.begin();
+    }
+};
