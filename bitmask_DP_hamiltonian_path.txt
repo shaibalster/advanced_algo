@@ -1,0 +1,58 @@
+
+#include <iostream>
+#include <vector>
+#include <bitset>
+
+using namespace std;
+
+int main() {
+	int V,E;
+	vector<vector<int>> adj_list;
+	vector<vector<int>> dp;
+	cin >> V >> E;
+	adj_list.resize(V);
+	dp.resize(V);
+	for (int i = 0; i < V; i++) {
+		dp[i].assign(1 << V, 0);
+		adj_list[i].assign(V, 0);
+	}
+	for (int i = 0; i < E; i++) {
+		int S,D;
+		cin >> S >> D;
+		adj_list[S - 1][D - 1] = 1;
+		adj_list[D - 1][S - 1] = 1;
+	}
+	for (int i = 0; i < V; i++) {
+		dp[i][1 << i] = 1;
+	}
+
+	for (int i = 0; i < (1 << V); i++) { // all the masks
+		for (int j = 0; j < V; j++) { // all the nodes included in the mask
+			if (i & (1 << j)) {
+				//check whether removing this node forms hamiltonian cycle
+				for (int k = 0; k < V; k++) {
+					if ((i & (1 << k)) && (k != j) && adj_list[k][j]
+					&& dp[k][i ^ (1 << j)]) {
+						dp[j][i] = 1;
+						break;
+					}
+				}
+			}
+		}
+	}
+	for (int i = 0; i < V; i++) {
+        for (int j = 0; j < (1 << V); j++) {
+            cout << dp[i][j] << " ";
+        }
+        cout << endl;
+	}
+    int count = 0;
+
+	for (int i = 0; i < V; i++) {
+		if (dp[i][(1 << V) - 1]) {
+			count++;
+		}
+	}
+	cout << count << endl;
+	return 0;
+}
